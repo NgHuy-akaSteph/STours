@@ -2,7 +2,6 @@ const catchAsync = require("../utils/catchSync");
 const AppError = require('../utils/app.error');
 const APIFeatures = require('../utils/api.features');
 
-
 const createOne = Model => catchAsync(async (req, res, next) => {
     const doc = await Model.create(req.body);
     const modelName = Model.modelName.toLowerCase();
