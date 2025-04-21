@@ -47,11 +47,8 @@ exports.logIn = async (email, password) => {
         throw new AppError(401, 'Incorrect email or password');
     }
     
-    // Trả về user và token
-    return {
-        user,
-        token: exports.signToken(user._id)
-    };
+    // Trả về user sau khi xác thực
+    return { user };
 };
 
 /**

@@ -1,8 +1,13 @@
 'use strict'
 
+const { promisify } = require('util');
+const jwt = require('jsonwebtoken');
 const authService = require('../services/auth.service');
 const catchAsync = require('../utils/catchSync');
 const AppError = require('../utils/app.error');
+const User = require('../models/user.model');
+
+
 
 const createAccessToken = (user, statusCode, res) => {
     const token = authService.signToken(user._id);
@@ -32,15 +37,19 @@ const logIn = catchAsync(async (req, res, next) => {
     const { email, password } = req.body;
     
     // Xác thực user và lấy thông tin
-    const { user, token } = await authService.logIn(email, password);
+    const { user } = await authService.logIn(email, password);
     
     // Gửi response
-    res.status(200).json({
-        status: 'success',
-        token,
-        data: { user }
-    });
+    createAccessToken(user, 200, res);
 });
+
+const logOut = (req, res, next) => {
+    res.cookie('jwt', 'loggedout', {
+        expires: new Date(Date.now() + 10 * 1000),
+        httpOnly: true
+    });
+    res.status(200).json({status: 'success'}); 
+}
 
 const protect = catchAsync(async (req, res, next) => {
     // 1) get token
@@ -49,13 +58,16 @@ const protect = catchAsync(async (req, res, next) => {
         && req.headers.authorization.startsWith('Bearer')) {
 
         token = req.headers.authorization.split(' ')[1];
+    } else if (req.cookies.jwt) {
+        token = req.cookies.jwt;
     }
     
     // 2) Xác thực token và lấy thông tin user
     const currentUser = await authService.protect(token);
     
-    // 3) Gán thông tin user vào request
+    // 3) Gán thông tin user vào request và locals
     req.user = currentUser;
+    res.locals.user = currentUser;
     next();
 });
 
@@ -111,12 +123,29 @@ const updatePassword = catchAsync(async (req, res, next) => {
     createAccessToken(user, 200, res);
 });
 
+// Only for rendered pages, no errors!
+const isLoggedIn = catchAsync(async (req, res, next) => {
+    const token = req.cookies.jwt;
+    if(token) {
+        const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET).catch(() => false);
+        if(!decoded) return next();
+        const currentUser = await User.findById(decoded.id).catch(() => false);
+        if(!currentUser) return next();
+        if(currentUser.changedPasswordAfter(decoded.iat)) return next();
+        res.locals.user = currentUser;
+        return next();
+    }
+    next();
+});
+
 module.exports = {
     signUp,
     logIn,
+    logOut,
     protect,
     restrictTo,
     forgotPassword,
     resetPassword,
-    updatePassword
+    updatePassword,
+    isLoggedIn,
 };

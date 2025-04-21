@@ -30,6 +30,7 @@ router
         tourController.deleteTour
     );
 
+
 router
     .route('/top-5-cheap')
     .get(tourController.aliasTopTour, tourController.getAllTours);

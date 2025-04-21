@@ -10,6 +10,7 @@ const router = express.Router();
 // No middleware
 router.post('/signup', authController.signUp);
 router.post('/login', authController.logIn);
+router.get('/logout', authController.logOut);
 router.post('/forgotPassword', authController.forgotPassword);
 router.patch('/resetPassword/:token', authController.resetPassword);
 
